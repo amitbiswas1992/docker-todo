@@ -46,7 +46,7 @@ jobs:
             git push origin main || echo "No changes to push"
 
             # Navigate to the app directory and rebuild the Docker image
-            cd /home/ubuntu/todo-list-app
+            cd /home/ubuntu/docker-todo
             docker build -t todo-list-app .
 
             # Stop and remove the old container if it's running
