@@ -1,0 +1,58 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main  # Trigger deployment when changes are pushed to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the latest code from GitHub
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Set up SSH access for deployment
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+
+      # Step 3: Deploy and manage code on EC2
+      - name: Deploy to EC2
+        run: |
+          ssh ubuntu@54.227.208.98 << 'EOF'
+            # Navigate to the app directory or clone the repo if not present
+            if [ ! -d "/home/ubuntu/todo-list-app" ]; then
+              git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/todo-list-app
+            else
+              cd /home/ubuntu/todo-list-app
+              git pull origin main
+            fi
+
+            # Step 4: Push any changes (if necessary) to the repo
+            # Ensure the EC2 instance has push access (requires correct SSH setup)
+            git config user.name "EC2 Automation"
+            git config user.email "ec2-user@myapp.com"
+            
+            # Example push: If a file needs updating
+            echo "Deployed at $(date)" > deployment_log.txt
+            git add deployment_log.txt
+            git commit -m "Updated deployment log"
+            git push origin main || echo "No changes to push"
+
+            # Navigate to the app directory and rebuild the Docker image
+            cd /home/ubuntu/todo-list-app
+            docker build -t todo-list-app .
+
+            # Stop and remove the old container if it's running
+            docker stop todo-list-app || true
+            docker rm todo-list-app || true
+
+            # Run the new container with updated code
+            docker run -d -p 80:3000 --name todo-list-app todo-list-app
+          EOF
