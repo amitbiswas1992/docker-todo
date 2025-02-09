@@ -26,41 +26,34 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh ubuntu@54.227.208.98 << 'EOF'
-            set -e  # Exit if any command fails
+            set -e  # Stop script if any command fails
             echo "Starting deployment process..."
 
-            # Update or clone the repository
-            if [ ! -d "/home/ubuntu/docker-todo" ]; then
+            # Navigate to the app directory or clone the repo if not present
+            if [ ! -d "/home/ubuntu/todo-list-app" ]; then
               echo "Cloning repository..."
-              git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/docker-todo
+              git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/todo-list-app
             else
               echo "Pulling latest changes..."
-              cd /home/ubuntu/docker-todo
+              cd /home/ubuntu/todo-list-app
               git pull origin master
             fi
 
-            # Ensure Docker permissions are correct (optional)
-            echo "Setting Docker permissions..."
-            sudo chmod 666 /var/run/docker.sock || true
+            # Navigate to the app directory
+            cd /home/ubuntu/todo-list-app
 
             # Build the Docker image
             echo "Building Docker image..."
-            cd /home/ubuntu/docker-todo
             sudo docker build -t todo-list-app .
 
-            # Stop and remove the old container if it exists
-            echo "Stopping old container if running..."
+            # Stop and remove the old container if it's running
+            echo "Stopping and removing old container..."
             sudo docker stop todo-list-app || true
-            echo "Removing old container if exists..."
             sudo docker rm todo-list-app || true
 
             # Run the new container
             echo "Running the new Docker container..."
             sudo docker run -d -p 80:3000 --name todo-list-app todo-list-app
-
-            # Clean up unused Docker images to save space
-            echo "Cleaning up unused Docker images..."
-            sudo docker image prune -a -f || true
 
             echo "Deployment completed successfully."
           EOF
