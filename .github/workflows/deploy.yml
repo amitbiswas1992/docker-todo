@@ -1,40 +1,66 @@
-- name: Deploy to EC2
-  run: |
-    ssh ubuntu@54.227.208.98 << 'EOF'
-      set -e  # Exit on any command failure
-      echo "Starting deployment process..."
+name: Deploy to AWS EC2
 
-      # Update repo with latest code
-      if [ ! -d "/home/ubuntu/docker-todo" ]; then
-        echo "Cloning repository..."
-        git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/docker-todo
-      else
-        echo "Pulling latest changes..."
-        cd /home/ubuntu/docker-todo
-        git pull origin master
-      fi
+on:
+  push:
+    branches:
+      - master  # Trigger deployment when changes are pushed to the 'master' branch
 
-      # Ensure Docker permissions are correct
-      echo "Setting Docker socket permissions..."
-      sudo chmod 666 /var/run/docker.sock
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-      # Build the Docker image
-      echo "Building Docker image..."
-      cd /home/ubuntu/docker-todo
-      sudo docker build -t todo-list-app .
+    steps:
+      # Step 1: Checkout the latest code from GitHub
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      # Stop and remove any old container
-      echo "Stopping and removing old container..."
-      sudo docker stop todo-list-app || true
-      sudo docker rm todo-list-app || true
+      # Step 2: Set up SSH access for deployment
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
-      # Run the new container
-      echo "Running new container..."
-      sudo docker run -d -p 80:3000 --name todo-list-app todo-list-app
+      # Step 3: Deploy and manage code on EC2
+      - name: Deploy to EC2
+        run: |
+          ssh ubuntu@54.227.208.98 << 'EOF'
+            set -e  # Exit if any command fails
+            echo "Starting deployment process..."
 
-      # Optional: Clean up old Docker images
-      echo "Cleaning up unused Docker images..."
-      sudo docker image prune -a -f || true
+            # Update or clone the repository
+            if [ ! -d "/home/ubuntu/docker-todo" ]; then
+              echo "Cloning repository..."
+              git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/docker-todo
+            else
+              echo "Pulling latest changes..."
+              cd /home/ubuntu/docker-todo
+              git pull origin master
+            fi
 
-      echo "Deployment completed successfully."
-    EOF
+            # Ensure Docker permissions are correct (optional)
+            echo "Setting Docker permissions..."
+            sudo chmod 666 /var/run/docker.sock || true
+
+            # Build the Docker image
+            echo "Building Docker image..."
+            cd /home/ubuntu/docker-todo
+            sudo docker build -t todo-list-app .
+
+            # Stop and remove the old container if it exists
+            echo "Stopping old container if running..."
+            sudo docker stop todo-list-app || true
+            echo "Removing old container if exists..."
+            sudo docker rm todo-list-app || true
+
+            # Run the new container
+            echo "Running the new Docker container..."
+            sudo docker run -d -p 80:3000 --name todo-list-app todo-list-app
+
+            # Clean up unused Docker images to save space
+            echo "Cleaning up unused Docker images..."
+            sudo docker image prune -a -f || true
+
+            echo "Deployment completed successfully."
+          EOF
