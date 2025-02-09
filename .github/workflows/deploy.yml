@@ -1,50 +1,40 @@
-name: Deploy to AWS EC2
+- name: Deploy to EC2
+  run: |
+    ssh ubuntu@54.227.208.98 << 'EOF'
+      set -e  # Exit on any command failure
+      echo "Starting deployment process..."
 
-on:
-  push:
-    branches:
-      - master  # Trigger deployment when changes are pushed to the 'master' branch
+      # Update repo with latest code
+      if [ ! -d "/home/ubuntu/docker-todo" ]; then
+        echo "Cloning repository..."
+        git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/docker-todo
+      else
+        echo "Pulling latest changes..."
+        cd /home/ubuntu/docker-todo
+        git pull origin master
+      fi
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+      # Ensure Docker permissions are correct
+      echo "Setting Docker socket permissions..."
+      sudo chmod 666 /var/run/docker.sock
 
-    steps:
-      # Step 1: Checkout the latest code from GitHub
-      - name: Checkout code
-        uses: actions/checkout@v2
+      # Build the Docker image
+      echo "Building Docker image..."
+      cd /home/ubuntu/docker-todo
+      sudo docker build -t todo-list-app .
 
-      # Step 2: Set up SSH access for deployment
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+      # Stop and remove any old container
+      echo "Stopping and removing old container..."
+      sudo docker stop todo-list-app || true
+      sudo docker rm todo-list-app || true
 
-      # Step 3: Deploy and manage code on EC2
-      - name: Deploy to EC2
-        run: |
-          ssh ubuntu@54.227.208.98 << 'EOF'
-            # Update repo with latest code
-            if [ ! -d "/home/ubuntu/docker-todo" ]; then
-              git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/docker-todo
-            else
-              cd /home/ubuntu/docker-todo
-              git pull origin master
-            fi
+      # Run the new container
+      echo "Running new container..."
+      sudo docker run -d -p 80:3000 --name todo-list-app todo-list-app
 
-            # Ensure Docker has permission for the current user
-            sudo chmod 666 /var/run/docker.sock
+      # Optional: Clean up old Docker images
+      echo "Cleaning up unused Docker images..."
+      sudo docker image prune -a -f || true
 
-            # Navigate to the app directory and rebuild the Docker image
-            cd /home/ubuntu/docker-todo
-            sudo docker build -t todo-list-app .
-
-            # Stop and remove the old container if it's running
-            sudo docker stop todo-list-app || true
-            sudo docker rm todo-list-app || true
-
-            # Run the new container with updated code
-            sudo docker run -d -p 80:3000 --name todo-list-app todo-list-app
-          EOF
+      echo "Deployment completed successfully."
+    EOF
