@@ -62,3 +62,4 @@ The to-do list app will be running at [http://localhost:3000](http://localhost:3
 ### Workflow test trigger 
 
 - Added deploy.yml to the main branch. 
+- Added ssh key from local machine to ec2 [ It has to be same] 
