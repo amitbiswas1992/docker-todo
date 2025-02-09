@@ -25,21 +25,25 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh ubuntu@54.227.208.98 << 'EOF'
-            # Update repo with latest code
+            # Ensure the repo is present or clone it
             if [ ! -d "/home/ubuntu/docker-todo" ]; then
               git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/docker-todo
-            else
-              cd /home/ubuntu/docker-todo
-              git pull origin master
             fi
+
+            # Always pull the latest code before proceeding
+            cd /home/ubuntu/docker-todo
+            git pull origin master
+
             # Ensure Docker has permission for the current user
             sudo chmod 666 /var/run/docker.sock
-            # Navigate to the app directory and rebuild the Docker image
-            cd /home/ubuntu/docker-todo
+
+            # Rebuild the Docker image with the latest changes
             sudo docker build -t todo-list-app .
+
             # Stop and remove the old container if it's running
             sudo docker stop todo-list-app || true
             sudo docker rm todo-list-app || true
+
             # Run the new container with updated code
             sudo docker run -d -p 80:3000 --name todo-list-app todo-list-app
           EOF
