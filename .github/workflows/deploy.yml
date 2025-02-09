@@ -3,7 +3,7 @@ name: Deploy to AWS EC2
 on:
   push:
     branches:
-      - master  # Trigger deployment when changes are pushed to the 'main' branch
+      - master  # Trigger deployment when changes are pushed to the 'master' branch
 
 jobs:
   deploy:
@@ -31,7 +31,7 @@ jobs:
               git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/todo-list-app
             else
               cd /home/ubuntu/todo-list-app
-              git pull origin main
+              git pull origin master
             fi
 
             # Step 4: Push any changes (if necessary) to the repo
