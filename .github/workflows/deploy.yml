@@ -26,33 +26,25 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh ubuntu@54.227.208.98 << 'EOF'
-            # Navigate to the app directory or clone the repo if not present
-            if [ ! -d "/home/ubuntu/todo-list-app" ]; then
-              git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/todo-list-app
+            # Update repo with latest code
+            if [ ! -d "/home/ubuntu/docker-todo" ]; then
+              git clone git@github.com:amitbiswas1992/docker-todo.git /home/ubuntu/docker-todo
             else
-              cd /home/ubuntu/todo-list-app
+              cd /home/ubuntu/docker-todo
               git pull origin master
             fi
 
-            # Step 4: Push any changes (if necessary) to the repo
-            # Ensure the EC2 instance has push access (requires correct SSH setup)
-            git config user.name "EC2 Automation"
-            git config user.email "ec2-user@myapp.com"
-            
-            # Example push: If a file needs updating
-            echo "Deployed at $(date)" > deployment_log.txt
-            git add deployment_log.txt
-            git commit -m "Updated deployment log"
-            git push origin main || echo "No changes to push"
+            # Ensure Docker has permission for the current user
+            sudo chmod 666 /var/run/docker.sock
 
             # Navigate to the app directory and rebuild the Docker image
             cd /home/ubuntu/docker-todo
-            docker build -t todo-list-app .
+            sudo docker build -t todo-list-app .
 
             # Stop and remove the old container if it's running
-            docker stop todo-list-app || true
-            docker rm todo-list-app || true
+            sudo docker stop todo-list-app || true
+            sudo docker rm todo-list-app || true
 
             # Run the new container with updated code
-            docker run -d -p 80:3000 --name todo-list-app todo-list-app
+            sudo docker run -d -p 80:3000 --name todo-list-app todo-list-app
           EOF
