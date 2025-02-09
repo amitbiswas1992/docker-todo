@@ -59,3 +59,6 @@ If you look at the Docker Desktop GUI, you can see the containers and dive deepe
 
 The to-do list app will be running at [http://localhost:3000](http://localhost:3000).
 
+### Workflow test trigger 
+
+- Added deploy.yml to the main branch. 
